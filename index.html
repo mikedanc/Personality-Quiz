@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personality Assessment</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #FAFAF8; --surface: #FFFFFF; --surface2: #F4F3EF;
+    --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+    --text: #1A1A18; --text2: #6B6B67; --text3: #9B9B97;
+    --radius: 12px; --radius-sm: 8px;
+    --O: #378ADD; --C: #1D9E75; --E: #EF9F27; --A: #D4537E; --N: #7F77DD;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111110; --surface: #1C1C1A; --surface2: #252523;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.18);
+      --text: #F0EFE9; --text2: #9B9B97; --text3: #6B6B67;
+    }
+  }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 16px; line-height: 1.5; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+  .container { max-width: 680px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+  /* top bar */
+  #top-bar { position: sticky; top: 0; z-index: 30; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.65rem 1.25rem; display: flex; align-items: center; gap: 12px; }
+  #progress-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  #progress-fill { height: 100%; background: var(--text2); border-radius: 2px; transition: width 0.3s; width: 0%; }
+  #progress-text { font-size: 12px; color: var(--text3); min-width: 48px; text-align: right; }
+  #dash-btn-top { font-size: 12px; padding: 0.35rem 0.875rem; border: 1px solid var(--border2); border-radius: 20px; background: var(--surface); color: var(--text2); cursor: pointer; white-space: nowrap; transition: background 0.15s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+  #dash-btn-top:hover { background: var(--surface2); }
+
+  /* intro */
+  .intro-wrap { padding: 3rem 0 2rem; }
+  .intro-wrap h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 0.75rem; }
+  .intro-wrap p { color: var(--text2); font-size: 15px; margin-bottom: 1.5rem; }
+  .intro-note { background: var(--surface2); border-radius: var(--radius-sm); padding: 0.875rem 1rem; font-size: 13px; color: var(--text2); margin-bottom: 2rem; }
+
+  /* questions */
+  .question-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 0.875rem; overflow: hidden; transition: border-color 0.2s; }
+  .question-block.answered { border-color: var(--border2); }
+  .q-body { padding: 1rem 1.25rem 0.875rem; }
+  .q-num { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .q-text { font-size: 15px; color: var(--text); line-height: 1.5; }
+
+  .likert-row { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--border); }
+  .likert-opt { position: relative; border-right: 1px solid var(--border); }
+  .likert-opt:last-child { border-right: none; }
+  .likert-opt input[type=radio] { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; top: 0; left: 0; margin: 0; z-index: 1; }
+  .likert-opt label { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0.75rem 0.25rem; cursor: pointer; user-select: none; transition: background 0.15s; }
+  .likert-opt label:hover { background: var(--surface2); }
+  .opt-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border2); background: var(--surface); transition: all 0.15s; flex-shrink: 0; pointer-events: none; }
+  .opt-label { font-size: 10px; color: var(--text3); text-align: center; line-height: 1.3; }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.7rem 1.75rem; font-size: 15px; font-weight: 500; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer; transition: background 0.15s, transform 0.1s; text-decoration: none; }
+  .btn:hover { background: var(--surface2); }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn-primary:hover { opacity: 0.85; background: var(--text); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  /* results */
+  .result-intro { margin-bottom: 1.75rem; padding-top: 2rem; }
+  .result-intro h2 { font-size: 22px; font-weight: 600; margin-bottom: 0.25rem; }
+  .result-intro p { color: var(--text2); font-size: 14px; }
+  .trait-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.125rem 1.25rem; margin-bottom: 0.75rem; }
+  .trait-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .trait-name { font-size: 14px; font-weight: 500; }
+  .trait-score { font-size: 13px; font-weight: 500; }
+  .trait-bar-bg { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+  .trait-bar-fill { height: 100%; border-radius: 3px; transition: width 1.2s cubic-bezier(.16,1,.3,1); }
+  .trait-desc { font-size: 13px; color: var(--text2); line-height: 1.55; }
+  .summary-box { background: var(--surface2); border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin: 1.25rem 0; font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+  /* dashboard */
+  .dash-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; padding-top: 2rem; flex-wrap: wrap; gap: 12px; }
+  .dash-header h1 { font-size: 22px; font-weight: 600; }
+  .response-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; overflow: hidden; }
+  .rc-head { padding: 0.875rem 1.125rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; gap: 12px; }
+  .rc-name { font-size: 14px; font-weight: 500; }
+  .rc-meta { font-size: 12px; color: var(--text3); }
+  .rc-chevron { color: var(--text3); font-size: 12px; transition: transform 0.2s; flex-shrink: 0; }
+  .rc-head.open .rc-chevron { transform: rotate(180deg); }
+  .rc-body { display: none; padding: 1rem 1.125rem; border-top: 1px solid var(--border); }
+  .rc-body.open { display: block; }
+  .mini-trait { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .mini-name { font-size: 12px; color: var(--text2); width: 130px; flex-shrink: 0; }
+  .mini-bar-bg { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .mini-bar-fill { height: 100%; border-radius: 2px; }
+  .mini-score { font-size: 12px; color: var(--text2); width: 36px; text-align: right; }
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 14px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; margin-right: 4px; margin-bottom: 4px; }
+
+  .nav-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+  .nav-tab { padding: 0.6rem 1.125rem; font-size: 13px; font-weight: 500; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; background: none; border-top: none; border-left: none; border-right: none; }
+  .nav-tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+  .share-box { background: var(--surface2); border-radius: var(--radius-sm); padding: 1rem 1.125rem; margin: 1.5rem 0; }
+  .share-box label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 6px; }
+  .share-input-row { display: flex; gap: 8px; }
+  .share-input { flex: 1; padding: 0.6rem 0.875rem; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 13px; outline: none; min-width: 0; }
+
+  /* setup */
+  .setup-wrap { max-width: 520px; margin: 0 auto; padding: 4rem 1.25rem 3rem; }
+  .setup-wrap h1 { font-size: 26px; font-weight: 600; margin-bottom: 0.75rem; letter-spacing: -0.3px; }
+  .setup-wrap p { color: var(--text2); font-size: 14px; margin-bottom: 1.5rem; line-height: 1.7; }
+  .setup-step { display: flex; gap: 12px; margin-bottom: 1rem; }
+  .setup-step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; margin-top: 1px; }
+  .setup-step-text { font-size: 14px; color: var(--text2); line-height: 1.6; }
+  .setup-step-text a { color: var(--text); }
+  .setup-field { margin: 1.5rem 0 1.25rem; }
+  .setup-field label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+  .setup-field input { width: 100%; padding: 0.65rem 0.875rem; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 14px; outline: none; }
+  .setup-field input:focus { border-color: var(--text2); }
+  .setup-note { font-size: 12px; color: var(--text3); margin-top: 6px; }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--text2); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .err-msg { color: #E24B4A; font-size: 13px; margin-top: 0.5rem; display: none; }
+  .status-msg { font-size: 13px; color: var(--text2); margin-top: 0.5rem; display: none; }
+
+  @media (max-width: 480px) {
+    .opt-label { display: none; }
+    .opt-circle { width: 26px; height: 26px; }
+    .likert-opt label { padding: 0.875rem 0.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div id="progress-track"><div id="progress-fill"></div></div>
+  <span id="progress-text">0 / 35</span>
+  <button id="dash-btn-top">Dashboard</button>
+</div>
+
+<!-- SETUP -->
+<div id="page-setup" class="page">
+  <div class="setup-wrap">
+    <h1>Set up your dashboard</h1>
+    <p>To collect results from other people's devices, you need a free cloud storage bin. Follow these steps:</p>
+    <div class="setup-step">
+      <div class="setup-step-num">1</div>
+      <div class="setup-step-text">Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> and create a free account.</div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-step-num">2</div>
+      <div class="setup-step-text">Click your avatar (top right) → <strong>API Keys</strong> → copy the key that starts with <code style="font-size:12px;background:var(--surface2);padding:1px 5px;border-radius:4px;">$2a$10$...</code></div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-step-num">3</div>
+      <div class="setup-step-text">Paste it below and save. This only needs to be done once on your device.</div>
+    </div>
+    <div class="setup-field">
+      <label for="api-key-input">Your JSONBin API Key</label>
+      <input type="password" id="api-key-input" placeholder="$2a$10$..." autocomplete="off">
+      <p class="setup-note">Stored only in this browser. Never shared with anyone.</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="setup-save-btn">Save and open dashboard →</button>
+      <span id="setup-spinner" style="display:none"><span class="spinner"></span></span>
+    </div>
+    <p class="err-msg" id="setup-err"></p>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="page-quiz" class="page">
+  <div class="container">
+    <div class="intro-wrap">
+      <h1>Personality Assessment</h1>
+      <p>Answer honestly — there are no right or wrong answers. Takes about 5–7 minutes.</p>
+      <div class="intro-note">Rate how much you agree with each statement.</div>
+      <div>
+        <label for="taker-name" style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px;">Your first name (optional)</label>
+        <input type="text" id="taker-name" placeholder="e.g. Alex" style="padding:0.6rem 0.875rem;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:14px;width:100%;max-width:260px;outline:none;margin-bottom:1.5rem;">
+      </div>
+    </div>
+    <div id="questions-container"></div>
+    <div style="margin-top:1.5rem;display:flex;flex-direction:column;align-items:flex-start;gap:0.5rem;">
+      <button class="btn btn-primary" id="submit-btn" disabled>Submit results →</button>
+      <p class="err-msg" id="err-msg">Please answer all 35 questions first.</p>
+      <p class="status-msg" id="submit-status"></p>
+    </div>
+  </div>
+</div>
+
+<!-- TAKER RESULTS -->
+<div id="page-results" class="page">
+  <div class="container">
+    <div class="result-intro">
+      <h2 id="result-heading">Your Results</h2>
+      <p>Based on the Big Five (OCEAN) personality model</p>
+    </div>
+    <div id="trait-cards"></div>
+    <div class="summary-box" id="result-summary"></div>
+    <p style="font-size:13px;color:var(--text3);margin-top:1rem;">Your results have been submitted. Thank you for taking the quiz.</p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page">
+  <div class="container">
+    <div class="dash-header">
+      <div>
+        <h1>Results Dashboard</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:3px;" id="dash-bin-id"></p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn" id="refresh-btn" style="font-size:13px;padding:0.5rem 1rem;">↻ Refresh</button>
+        <button class="btn" id="clear-btn" style="font-size:13px;padding:0.5rem 1rem;">Clear all</button>
+        <button class="btn" id="reset-key-btn" style="font-size:13px;padding:0.5rem 1rem;">Change key</button>
+      </div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-tab="responses">Responses</button>
+      <button class="nav-tab" data-tab="share">Share quiz</button>
+    </div>
+
+    <div id="tab-responses"><div id="responses-list"></div></div>
+
+    <div id="tab-share" style="display:none;">
+      <p style="font-size:14px;color:var(--text2);margin-bottom:1rem;">Send this link to anyone. Their results will appear here automatically — from any device.</p>
+      <div class="share-box">
+        <label>Quiz link</label>
+        <div class="share-input-row">
+          <input type="text" class="share-input" id="quiz-link" readonly>
+          <button class="btn" id="copy-link-btn" style="padding:0.6rem 1rem;font-size:13px;white-space:nowrap;">Copy</button>
+        </div>
+      </div>
+      <div style="margin-top:1rem;">
+        <a id="email-link" href="#" class="btn" style="font-size:13px;">Open in Mail ↗</a>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin-top:1rem;">The link includes your bin ID so results route to your dashboard automatically.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const TRAITS = [
+  { id:"O", name:"Openness",          color:"#378ADD" },
+  { id:"C", name:"Conscientiousness", color:"#1D9E75" },
+  { id:"E", name:"Extraversion",      color:"#EF9F27" },
+  { id:"A", name:"Agreeableness",     color:"#D4537E" },
+  { id:"N", name:"Neuroticism",       color:"#7F77DD" },
+];
+
+const QUESTIONS_RAW = [
+  {t:"O",r:false,q:"I love trying new experiences, even if they make me uncomfortable at first."},
+  {t:"O",r:false,q:"When I travel, I try to immerse myself in the local culture."},
+  {t:"O",r:false,q:"I enjoy exploring perspectives that differ from my own."},
+  {t:"O",r:false,q:"I enjoy creating new and creative solutions to problems."},
+  {t:"O",r:true, q:"I prefer doing something I've already done before over something unfamiliar."},
+  {t:"O",r:true, q:"I like to stick to a rigid daily routine."},
+  {t:"O",r:true, q:"I'd rather order food I already know I like than try something new."},
+  {t:"C",r:false,q:"I take full responsibility for completing my tasks."},
+  {t:"C",r:false,q:"I get things done on time, even when I don't feel like it."},
+  {t:"C",r:false,q:"I hold myself to the same standards whether or not anyone is watching."},
+  {t:"C",r:false,q:"When working on a big project, I prefer to plan it out step by step."},
+  {t:"C",r:false,q:"I know where my belongings are in my workspace."},
+  {t:"C",r:true, q:"I frequently miss deadlines."},
+  {t:"C",r:true, q:"I set goals but often fall short of reaching them."},
+  {t:"E",r:false,q:"I feel energized by spending time in large groups."},
+  {t:"E",r:false,q:"I enjoy going to events where I don't know most people."},
+  {t:"E",r:false,q:"I like to initiate conversations with people I've just met."},
+  {t:"E",r:false,q:"I look forward to social gatherings after a long week."},
+  {t:"E",r:true, q:"I find long conversations draining."},
+  {t:"E",r:true, q:"After a long day, I prefer to be left alone rather than socializing."},
+  {t:"E",r:true, q:"I need to be asked more than once before I'll go out with people."},
+  {t:"A",r:false,q:"I forgive people easily when they've wronged me."},
+  {t:"A",r:false,q:"I tend to take on extra work if someone needs help, even when I'm busy."},
+  {t:"A",r:false,q:"People regularly come to me for advice or support."},
+  {t:"A",r:false,q:"I actively try to avoid unnecessary conflict."},
+  {t:"A",r:true, q:"I feel a strong need to prove my point in disagreements."},
+  {t:"A",r:true, q:"When I disagree with someone, I prioritize winning over finding common ground."},
+  {t:"A",r:true, q:"I often say what I think people want to hear rather than the truth."},
+  {t:"N",r:false,q:"I tend to dwell on criticism long after I've received it."},
+  {t:"N",r:false,q:"My mood is strongly affected by day-to-day events."},
+  {t:"N",r:false,q:"Under emotional stress, I find it difficult to function normally."},
+  {t:"N",r:false,q:"I often feel frustrated when things don't go as planned."},
+  {t:"N",r:true, q:"I rarely feel anxious, even in high-pressure situations."},
+  {t:"N",r:true, q:"I tend to bounce back quickly after setbacks."},
+  {t:"N",r:true, q:"I generally stay calm when unexpected problems arise."},
+];
+
+function interleave(qs) {
+  const g={O:[],C:[],E:[],A:[],N:[]};
+  qs.forEach(q=>g[q.t].push(q));
+  const r=[];
+  for(let i=0;i<7;i++) ['O','C','E','A','N'].forEach(t=>{if(g[t][i])r.push(g[t][i]);});
+  return r;
+}
+const QUESTIONS = interleave(QUESTIONS_RAW);
+const LABELS = ["Strongly agree","Agree","Neutral","Disagree","Strongly disagree"];
+const SCORES  = [5,4,3,2,1];
+
+const TRAIT_DESC = {
+  O:{high:"You're curious, imaginative, and drawn to novelty. You embrace new ideas and unconventional perspectives with enthusiasm.",low:"You prefer the familiar and practical. Consistency and proven approaches guide your choices more than novelty."},
+  C:{high:"You're organized, dependable, and goal-oriented. You follow through on commitments and hold yourself to high standards.",low:"You tend to be spontaneous and flexible. Rigid planning and structure don't come naturally — you adapt as things evolve."},
+  E:{high:"You thrive around people and draw energy from social interaction. You're outgoing and enjoy meeting new people.",low:"You recharge in solitude and prefer smaller, more intimate settings. Large social gatherings tend to drain you."},
+  A:{high:"You're warm, cooperative, and considerate. You prioritize harmony and tend to be empathetic and easy to work with.",low:"You're direct and willing to challenge others. You value honesty and aren't afraid to assert yourself or debate your position."},
+  N:{high:"You experience emotions deeply and are sensitive to stress. You're attuned to your inner life and react strongly to your environment.",low:"You're emotionally stable and resilient. You stay grounded under pressure and don't dwell long on setbacks."},
+};
+
+function getLevel(p){return p>=80?"Very high":p>=65?"High":p>=45?"Moderate":p>=30?"Low":"Very low";}
+
+// ── JSONBIN ──
+const LS_KEY="pq_apikey", LS_BIN="pq_binid";
+const BASE="https://api.jsonbin.io/v3";
+const getApiKey=()=>localStorage.getItem(LS_KEY)||"";
+const getBinId =()=>localStorage.getItem(LS_BIN) ||"";
+
+async function initBin(key){
+  const r=await fetch(`${BASE}/b`,{method:"POST",headers:{"Content-Type":"application/json","X-Master-Key":key,"X-Bin-Name":"personality-quiz","X-Bin-Private":"true"},body:JSON.stringify({results:[]})});
+  if(!r.ok) throw new Error(`API key error (${r.status}) — double-check your key`);
+  const d=await r.json();
+  return d.metadata.id;
+}
+async function fetchResults(key,bin){
+  const r=await fetch(`${BASE}/b/${bin}/latest`,{headers:{"X-Master-Key":key}});
+  if(!r.ok) throw new Error(`Fetch failed (${r.status})`);
+  const d=await r.json();
+  return d.record.results||[];
+}
+async function pushResult(key,bin,entry){
+  const cur=await fetchResults(key,bin);
+  cur.unshift(entry);
+  const r=await fetch(`${BASE}/b/${bin}`,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":key},body:JSON.stringify({results:cur})});
+  if(!r.ok) throw new Error(`Save failed (${r.status})`);
+}
+async function clearBin(key,bin){
+  const r=await fetch(`${BASE}/b/${bin}`,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":key},body:JSON.stringify({results:[]})});
+  if(!r.ok) throw new Error("Clear failed");
+}
+
+// ── URL helpers ──
+function getQuizURL(){
+  const base=location.href.replace(/[?#].*$/,"");
+  const bin=getBinId();
+  return bin?`${base}?bin=${encodeURIComponent(bin)}`:base;
+}
+function getBinFromURL(){
+  return new URLSearchParams(location.search).get("bin")||"";
+}
+
+// ── ROUTING ──
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  const quiz=id==="page-quiz"||id==="page-results";
+  document.getElementById("top-bar").style.display=quiz?"flex":"none";
+}
+
+function route(){
+  if(location.hash==="#dashboard"){
+    const key=getApiKey(), bin=getBinId();
+    if(!key||!bin){showPage("page-setup");}
+    else{showPage("page-dashboard");renderDashboard();}
+    return;
+  }
+  const urlBin=getBinFromURL();
+  if(urlBin) localStorage.setItem("pq_taker_bin",urlBin);
+  showPage("page-quiz");
+  buildQuiz();
+}
+
+// ── SETUP ──
+document.getElementById("setup-save-btn").addEventListener("click",async()=>{
+  const key=document.getElementById("api-key-input").value.trim();
+  const errEl=document.getElementById("setup-err");
+  const spinner=document.getElementById("setup-spinner");
+  errEl.style.display="none";
+  if(!key){errEl.textContent="Please paste your API key.";errEl.style.display="block";return;}
+  spinner.style.display="inline-block";
+  document.getElementById("setup-save-btn").disabled=true;
+  try{
+    let bin=getBinId();
+    if(!bin){bin=await initBin(key);localStorage.setItem(LS_BIN,bin);}
+    localStorage.setItem(LS_KEY,key);
+    showPage("page-dashboard");
+    renderDashboard();
+  }catch(e){errEl.textContent=e.message;errEl.style.display="block";}
+  finally{spinner.style.display="none";document.getElementById("setup-save-btn").disabled=false;}
+});
+
+// ── BUILD QUIZ ──
+let answers={}, quizBuilt=false;
+
+function buildQuiz(){
+  if(quizBuilt)return;
+  quizBuilt=true;
+  const container=document.getElementById("questions-container");
+  QUESTIONS.forEach((q,i)=>{
+    const block=document.createElement("div");
+    block.className="question-block";
+    block.dataset.idx=i;
+    let likertHTML="";
+    LABELS.forEach((lbl,li)=>{
+      const s=lbl.replace("Strongly ","S. ");
+      likertHTML+=`<div class="likert-opt"><input type="radio" name="q${i}" value="${li}" id="q${i}v${li}"><label for="q${i}v${li}"><div class="opt-circle" data-idx="${i}" data-val="${li}"></div><span class="opt-label">${s}</span></label></div>`;
+    });
+    block.innerHTML=`<div class="q-body"><div class="q-num">${i+1} of 35</div><div class="q-text">${q.q}</div></div><div class="likert-row">${likertHTML}</div>`;
+    container.appendChild(block);
+  });
+  container.addEventListener("change",e=>{
+    if(e.target.type!=="radio")return;
+    const idx=parseInt(e.target.name.replace("q",""));
+    answers[idx]=parseInt(e.target.value);
+    const block=document.querySelector(`.question-block[data-idx="${idx}"]`);
+    block.classList.add("answered");
+    const color=TRAITS.find(x=>x.id===QUESTIONS[idx].t).color;
+    block.querySelectorAll(".opt-circle").forEach(c=>{
+      if(parseInt(c.dataset.val)===answers[idx]){c.style.borderColor=color;c.style.background=color+"22";}
+      else{c.style.borderColor="";c.style.background="";}
+    });
+    updateProgress();
+  });
+}
+
+function updateProgress(){
+  const n=Object.keys(answers).length;
+  document.getElementById("progress-fill").style.width=Math.round(n/35*100)+"%";
+  document.getElementById("progress-text").textContent=`${n} / 35`;
+  document.getElementById("submit-btn").disabled=(n<35);
+}
+
+// ── SCORE ──
+function computeScores(){
+  const raw={O:0,C:0,E:0,A:0,N:0},cnt={O:0,C:0,E:0,A:0,N:0};
+  QUESTIONS.forEach((q,i)=>{
+    if(answers[i]===undefined)return;
+    let s=SCORES[answers[i]]; if(q.r)s=6-s;
+    raw[q.t]+=s;cnt[q.t]++;
+  });
+  const out={};
+  TRAITS.forEach(t=>{out[t.id]=Math.round(raw[t.id]/(cnt[t.id]*5)*100);});
+  return out;
+}
+
+// ── SUBMIT ──
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  if(Object.keys(answers).length<35){document.getElementById("err-msg").style.display="block";return;}
+  document.getElementById("err-msg").style.display="none";
+  const scores=computeScores();
+  const name=document.getElementById("taker-name").value.trim()||"Anonymous";
+  const entry={id:Date.now(),name,date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),scores};
+  const btn=document.getElementById("submit-btn");
+  const statusEl=document.getElementById("submit-status");
+  btn.disabled=true; btn.textContent="Saving…";
+  statusEl.style.display="block"; statusEl.textContent="Submitting…";
+
+  const urlBin=getBinFromURL()||localStorage.getItem("pq_taker_bin")||"";
+  const ownerKey=getApiKey(), ownerBin=getBinId();
+  let saved=false;
+
+  const targetBin=urlBin||ownerBin;
+  if(targetBin&&ownerKey){
+    try{await pushResult(ownerKey,targetBin,entry);saved=true;}catch(e){}
+  }
+  if(!saved){
+    // Fallback to localStorage in case key not present on this device
+    const fb=JSON.parse(localStorage.getItem("pq_fallback")||"[]");
+    fb.unshift(entry);
+    localStorage.setItem("pq_fallback",JSON.stringify(fb));
+  }
+  statusEl.textContent=saved?"Saved!":"Saved locally (open dashboard to sync).";
+  setTimeout(()=>{statusEl.style.display="none";},2500);
+  showResults(scores,name);
+});
+
+// ── RESULTS VIEW ──
+function showResults(scores,name){
+  showPage("page-results");
+  document.getElementById("result-heading").textContent=name&&name!=="Anonymous"?`${name}'s Results`:"Your Results";
+  const container=document.getElementById("trait-cards");
+  container.innerHTML="";
+  TRAITS.forEach(t=>{
+    const pct=scores[t.id];
+    const desc=pct>=50?TRAIT_DESC[t.id].high:TRAIT_DESC[t.id].low;
+    const card=document.createElement("div");
+    card.className="trait-card";
+    card.innerHTML=`<div class="trait-top"><span class="trait-name">${t.name}</span><span class="trait-score" style="color:${t.color}">${pct}% — ${getLevel(pct)}</span></div><div class="trait-bar-bg"><div class="trait-bar-fill" style="width:0%;background:${t.color}" data-target="${pct}"></div></div><div class="trait-desc">${desc}</div>`;
+    container.appendChild(card);
+  });
+  setTimeout(()=>{container.querySelectorAll(".trait-bar-fill").forEach(b=>{b.style.width=b.dataset.target+"%";});},80);
+  const sorted=TRAITS.slice().sort((a,b)=>scores[b.id]-scores[a.id]);
+  const top=sorted[0],bot=sorted[sorted.length-1];
+  document.getElementById("result-summary").innerHTML=`Your strongest dimension is <strong>${top.name}</strong> (${scores[top.id]}%) and your most subdued is <strong>${bot.name}</strong> (${scores[bot.id]}%). This profile reflects how you typically engage with new experiences, manage responsibilities, relate to others, and handle emotional stress.`;
+}
+
+// ── DASHBOARD ──
+async function renderDashboard(){
+  const list=document.getElementById("responses-list");
+  const key=getApiKey(), bin=getBinId();
+  document.getElementById("dash-bin-id").textContent=bin?`Bin ID: ${bin}`:"";
+  list.innerHTML=`<div class="empty-state"><span class="spinner"></span></div>`;
+  let results=[];
+  try{
+    results=await fetchResults(key,bin);
+    // Merge any local fallback entries
+    const fb=JSON.parse(localStorage.getItem("pq_fallback")||"[]");
+    if(fb.length){
+      for(const e of fb){try{await pushResult(key,bin,e);}catch(x){}}
+      localStorage.removeItem("pq_fallback");
+      results=await fetchResults(key,bin);
+    }
+  }catch(e){
+    list.innerHTML=`<div class="empty-state" style="color:#E24B4A">Error: ${e.message}</div>`;
+    return;
+  }
+  list.innerHTML="";
+  if(!results.length){
+    list.innerHTML=`<div class="empty-state">No responses yet. Go to the Share tab to send your quiz link.</div>`;
+  } else {
+    results.forEach(entry=>{
+      const card=document.createElement("div");
+      card.className="response-card";
+      const miniTraits=TRAITS.map(t=>{
+        const p=entry.scores[t.id];
+        return `<div class="mini-trait"><span class="mini-name">${t.name}</span><div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${p}%;background:${t.color}"></div></div><span class="mini-score">${p}%</span></div>`;
+      }).join("");
+      const sorted=TRAITS.slice().sort((a,b)=>entry.scores[b.id]-entry.scores[a.id]);
+      const tagHTML=sorted.slice(0,3).map(t=>`<span class="tag" style="background:${t.color}18;color:${t.color}">${t.name}</span>`).join("");
+      const detail=TRAITS.map(t=>{
+        const p=entry.scores[t.id];
+        const d=p>=50?TRAIT_DESC[t.id].high:TRAIT_DESC[t.id].low;
+        return `<div style="margin-bottom:10px;"><span style="font-size:12px;font-weight:500;color:${t.color}">${t.name} — ${getLevel(p)}</span><p style="font-size:12px;color:var(--text2);margin-top:2px;line-height:1.5">${d}</p></div>`;
+      }).join("");
+      card.innerHTML=`<div class="rc-head"><div><div class="rc-name">${entry.name}</div><div class="rc-meta">${entry.date}</div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;"><div>${tagHTML}</div><span class="rc-chevron">▼</span></div></div><div class="rc-body">${miniTraits}<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">${detail}</div></div>`;
+      list.appendChild(card);
+      card.querySelector(".rc-head").addEventListener("click",function(){
+        card.querySelector(".rc-body").classList.toggle("open");
+        this.classList.toggle("open");
+      });
+    });
+  }
+  const url=getQuizURL();
+  document.getElementById("quiz-link").value=url;
+  document.getElementById("email-link").href=`mailto:?subject=Take%20this%20personality%20quiz&body=Hi!%0A%0AI'd%20love%20for%20you%20to%20take%20this%20short%20personality%20assessment%20%E2%80%94%20it%20takes%20about%205%20minutes.%0A%0A${encodeURIComponent(url)}%0A%0AThanks!`;
+}
+
+document.querySelectorAll(".nav-tab").forEach(tab=>{
+  tab.addEventListener("click",function(){
+    document.querySelectorAll(".nav-tab").forEach(t=>t.classList.remove("active"));
+    this.classList.add("active");
+    ["responses","share"].forEach(id=>{
+      document.getElementById("tab-"+id).style.display=this.dataset.tab===id?"block":"none";
+    });
+  });
+});
+
+document.getElementById("copy-link-btn").addEventListener("click",function(){
+  const inp=document.getElementById("quiz-link");inp.select();
+  navigator.clipboard.writeText(inp.value).then(()=>{this.textContent="Copied!";setTimeout(()=>this.textContent="Copy",2000);}).catch(()=>{document.execCommand("copy");this.textContent="Copied!";setTimeout(()=>this.textContent="Copy",2000);});
+});
+
+document.getElementById("refresh-btn").addEventListener("click",renderDashboard);
+document.getElementById("clear-btn").addEventListener("click",async()=>{
+  if(!confirm("Delete all responses? This cannot be undone."))return;
+  try{await clearBin(getApiKey(),getBinId());renderDashboard();}catch(e){alert("Error: "+e.message);}
+});
+document.getElementById("reset-key-btn").addEventListener("click",()=>{
+  if(!confirm("Disconnect from current bin and re-enter your key?"))return;
+  localStorage.removeItem(LS_KEY);localStorage.removeItem(LS_BIN);showPage("page-setup");
+});
+document.getElementById("dash-btn-top").addEventListener("click",()=>{ location.hash="#dashboard"; });
+
+route();
+window.addEventListener("hashchange",route);
+</script>
+</body>
+</html>
